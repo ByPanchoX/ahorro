@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mi Plan de Ahorro</title>
+    <link rel="manifest" href="manifest.json">
+    <style>
+        body { font-family: -apple-system, sans-serif; background-color: #f4f4f9; padding: 15px; margin: 0; color: #333; }
+        .card { background: white; padding: 20px; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        h2, h3 { margin-top: 0; }
+        .balance { font-size: 28px; font-weight: bold; color: #28a745; }
+        .progress-bar { background: #e9ecef; border-radius: 8px; height: 20px; width: 100%; overflow: hidden; margin-top: 10px; }
+        .progress-fill { background: #007bff; height: 100%; transition: width 0.3s; }
+        input { width: 100%; padding: 10px; margin: 8px 0; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-size: 16px; }
+        button { width: 100%; padding: 12px; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; color: white; margin-top: 5px; }
+        .btn-income { background-color: #28a745; }
+        .btn-expense { background-color: #dc3545; }
+        .btn-goal { background-color: #007bff; }
+        .transaction { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; }
+        .income-text { color: #28a745; font-weight: bold; }
+        .expense-text { color: #dc3545; font-weight: bold; }
+        .delete-btn { color: #999; cursor: pointer; font-size: 12px; margin-left: 10px; }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <h3>Saldo Actual</h3>
+        <div class="balance" id="balanceDisplay">$0</div>
+        
+        <h4 style="margin-top: 15px; margin-bottom: 5px;">Meta de Ahorro: <span id="goalDisplay">$0</span></h4>
+        <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width: 0%;"></div></div>
+        <p style="font-size: 14px; color: #666; margin-top: 5px;" id="remainingText">Faltan $0 para la meta</p>
+    </div>
+
+    <div class="card">
+        <h3>Ajustar Meta</h3>
+        <input type="number" id="goalInput" placeholder="Ej: 900000">
+        <button class="btn-goal" onclick="setGoal()">Guardar Meta</button>
+    </div>
+
+    <div class="card">
+        <h3>Nuevo Movimiento</h3>
+        <input type="text" id="descInput" placeholder="Ej: Ayudantía, Corte pelo, etc.">
+        <input type="number" id="amountInput" placeholder="Monto ($)">
+        <div style="display: flex; gap: 10px;">
+            <button class="btn-income" onclick="addTransaction('income')">+ Ingreso</button>
+            <button class="btn-expense" onclick="addTransaction('expense')">- Gasto</button>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>Historial</h3>
+        <div id="transactionList"></div>
+    </div>
+
+    <script>
+        let transactions = JSON.parse(localStorage.getItem('transactions')) || [];
+        let goal = JSON.parse(localStorage.getItem('goal')) || 900000;
+
+        function updateUI() {
+            let balance = transactions.reduce((acc, t) => t.type === 'income' ? acc + t.amount : acc - t.amount, 0);
+            document.getElementById('balanceDisplay').innerText = '$' + balance.toLocaleString('es-CL');
+            document.getElementById('goalDisplay').innerText = '$' + goal.toLocaleString('es-CL');
+            
+            let remaining = goal - balance;
+            document.getElementById('remainingText').innerText = remaining > 0 ? `Faltan $${remaining.toLocaleString('es-CL')} para la meta` : '¡Meta alcanzada!';
+            
+            let percentage = goal > 0 ? Math.min((balance / goal) * 100, 100) : 0;
+            document.getElementById('progressFill').style.width = percentage + '%';
+
+            let list = document.getElementById('transactionList');
+            list.innerHTML = '';
+            transactions.slice().reverse().forEach((t, index) => {
+                let div = document.createElement('div');
+                div.className = 'transaction';
+                let realIndex = transactions.length - 1 - index;
+                div.innerHTML = `
+                    <span>${t.desc} <span class="delete-btn" onclick="deleteTx(${realIndex})">❌</span></span>
+                    <span class="${t.type === 'income' ? 'income-text' : 'expense-text'}">
+                        ${t.type === 'income' ? '+' : '-'}$${t.amount.toLocaleString('es-CL')}
+                    </span>
+                `;
+                list.appendChild(div);
+            });
+        }
+
+        function addTransaction(type) {
+            let desc = document.getElementById('descInput').value;
+            let amount = parseFloat(document.getElementById('amountInput').value);
+            if (desc && amount) {
+                transactions.push({ desc, amount, type });
+                localStorage.setItem('transactions', JSON.stringify(transactions));
+                document.getElementById('descInput').value = '';
+                document.getElementById('amountInput').value = '';
+                updateUI();
+            }
+        }
+
+        function setGoal() {
+            let newGoal = parseFloat(document.getElementById('goalInput').value);
+            if (newGoal) {
+                goal = newGoal;
+                localStorage.setItem('goal', JSON.stringify(goal));
+                document.getElementById('goalInput').value = '';
+                updateUI();
+            }
+        }
+
+        function deleteTx(index) {
+            transactions.splice(index, 1);
+            localStorage.setItem('transactions', JSON.stringify(transactions));
+            updateUI();
+        }
+
+        updateUI();
+    </script>
+</body>
+</html>
